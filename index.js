@@ -7,9 +7,6 @@ const config = require('./config.js');
 const githubHook = require('githubHook'); // listen to webhooks
 const octonode = require('octonode'); // needed to play with GitHub API
 const tools = require('./tools.js');
-const chalk = require('chalk');
-//const Monet = require('monet');
-
 
 // create 3 octocats
 const dizzy = octonode.client({
@@ -52,8 +49,6 @@ github.on('*', (event, repo, ref, data) => {
       switch (data.action) {
 
         case 'opened':
-          //console.log(data.issue.title);
-          //console.log(data.issue.body);
 
           data.issue.body = data.issue.body !== null || data.issue.body !== undefined ? data.issue.body : "";
 
@@ -181,12 +176,10 @@ github.on('*', (event, repo, ref, data) => {
                         body: `Hey People!`,
                         head: branchName,
                         base: `master`
-                      }, (err, status, body, headers)=> {
+                      }, (err, status, body, headers) => {
 
                       });
-                      
-                      
-                      
+
                     }
                   );
                   
@@ -204,6 +197,62 @@ github.on('*', (event, repo, ref, data) => {
     
     case 'push':
 
+      (data.head_commit!==undefined || data.head_commit!==null) ? (() => {
+        
+        //let commitMessage = data.head_commit.message;
+
+        /*
+          If you put a :) in your code
+         */
+
+        data.head_commit.modified !== undefined ? (() => {
+
+          // get the first modified file
+          let fileName = data.head_commit.modified[0] == undefined
+            ? data.head_commit.added[0]
+            : data.head_commit.modified[0];
+
+
+          data.head_commit.id!==undefined ? (() => { // id is undefined when branch is deleted
+            
+            let commitUrl = data.repository.commits_url.replace('{/sha}',`/${data.head_commit.id}`);
+
+            dizzy.get( // get content of the commit
+              commitUrl,
+              (err, status, body, headers)=> { //TODO: manage errors
+                let fileDetails = body.files;
+                let fileObject = fileDetails.find(item => item.filename == fileName);
+
+                let lastUpdates = fileObject.patch.split('\n').filter(update => update.startsWith('+'));
+
+                lastUpdates.forEach(line => {
+                  console.log(line)
+                  
+                  // if there is a :) in the source code
+                  tools.checkIfString(line).contains(':)') == true ? (() => {
+
+                    dizzy.post( // post comment on the commit
+                      `${commitUrl}/comments`,
+                      {
+                        body: `Great stuff @${data.head_commit.committer.name} :+1: on this`
+                      },
+                      (err, status, body, headers)=> {
+                        // nothing ....
+                      }
+                    );
+
+                  })() : undefined; // do nothing
+                  
+                });
+              }
+            );
+
+          })() : undefined; // do nothing
+
+        })() : undefined; // do nothing
+
+      })() : undefined; // do nothing
+      
       break;
     
     case 'commit_comment':
